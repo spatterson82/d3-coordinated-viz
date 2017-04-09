@@ -1,5 +1,8 @@
 (function() {
 
+    ////////////////////
+    //Global Variables//
+    ////////////////////
     // fields for joining
     var attrArray = ["Public_Supply", "Domestic_Fresh", "Irrigation_Fresh",
         "Livestock_Fresh", "Aquaculture_Fresh", "Industrial_Fresh", "Industrial_Saline",
@@ -8,6 +11,24 @@
     var expressed = attrArray[0];
     var float_list = [];
     var maxVal = null;
+
+    // chart frame
+    var chartWidth = window.innerWidth * .425,
+        chartHeight = 500,
+        leftPadding = 2,
+        rightPadding = 2,
+        topBottomPadding = 25,
+        chartInnerWidth = chartWidth - rightPadding - leftPadding,
+        chartInnerHeight = chartHeight - topBottomPadding,
+        translate = "translate(" + 4 + "," + 0  + ")";
+
+    var xScale = d3.scaleLinear()
+        .range([leftPadding + rightPadding + 1, chartInnerWidth - 10])
+        .domain([0, maxVal]);
+
+
+    window.onload = setMap();
+
 
     // choropleth map
     function setMap() {
@@ -39,7 +60,6 @@
             for (var i in csvData) {
                 if (!isNaN(csvData[i][expressed])) {
                     float_list.push(parseFloat(csvData[i][expressed]));
-                    console.log(csvData[i][expressed]);
                 };
             };
             maxVal = Math.max.apply(null, float_list);
@@ -52,27 +72,30 @@
 
             setChart(csvData, colorScale);
 
-            console.log(unitedstates);
+            // add dropdown
+            createDropdown(csvData);
         };
     };
 
     function setChart(csvData, colorScale) {
-        // chart frame
-        var chartWidth = window.innerWidth * .425,
-            chartHeight = 500,
-            leftPadding = 2,
-            rightPadding = 2,
-            topBottomPadding = 25,
-            chartInnerWidth = chartWidth - rightPadding - leftPadding,
-            chartInnerHeight = chartHeight - topBottomPadding,
-            translate = "translate(" + 4 + "," + 0  + ")";
-
         // new svg for bar chart
         var chart = d3.select('body')
             .append('svg')
             .attr('width', chartWidth)
             .attr('height', chartHeight)
             .attr('class', 'chart');
+
+        // add those bars
+        var bars = chart.selectAll('.bars')
+            .data(csvData)
+            .enter()
+            .append('rect')
+            .sort(function(a, b) {
+                return a[expressed]-b[expressed];
+            })
+            .attr('class', function(d) {
+                return "bars " + d.STATE_NAME;
+            });
 
         // background of chart
         var chartBackground = chart.append('rect')
@@ -94,35 +117,6 @@
             .attr('y', 30)
             .attr('class', 'chartTitle')
             .text('Number of Variable ' + expressed + ' in each region');
-
-        var xScale = d3.scaleLinear()
-            .range([leftPadding + rightPadding + 1, chartInnerWidth - 10])
-            .domain([0, maxVal]);
-
-        // add those bars
-        var bars = chart.selectAll('.bars')
-            .data(csvData)
-            .enter()
-            .append('rect')
-            .sort(function(a, b) {
-                return a[expressed]-b[expressed];
-            })
-            .attr('class', function(d) {
-                return "bars " + d.STATE_NAME;
-            })
-            .attr('width', function(d) {
-                return xScale(parseFloat(d[expressed]));
-            })
-            .attr('x', function(d) {
-                return xScale(parseFloat(d[expressed])/chartInnerWidth);
-            })
-            .attr('height', chartInnerHeight / csvData.length - 1)
-            .attr('y', function(d, i) {
-                return i * ((chartInnerHeight - 2) / csvData.length);
-            })
-            .style('fill', function(d) {
-                return choropleth(d, colorScale);
-            });
 
         // horizontal axis
         var xAxis = d3.axisBottom()
@@ -162,6 +156,9 @@
         //     .text(function(d) {
         //         return d[expressed];
         //     });
+
+        // function for repeated parts of both bars sections
+        updateChart(bars, csvData.length, colorScale);
     };
 
 
@@ -182,6 +179,88 @@
         //     .attr('d', path);
     };
 
+    function createDropdown(csvData) {
+        // select element
+        var dropdown = d3.select('body')
+            .append('select')
+            .attr('class', 'dropdown')
+            .on('change', function() {
+                // get max val in current csv to use as domain high value
+                float_list = [];
+                for (var i in csvData) {
+                    if (!isNaN(csvData[i][this.value])) {
+                        float_list.push(parseFloat(csvData[i][this.value]));
+                    };
+                };
+                maxVal = Math.max.apply(null, float_list);
+
+                changeAttribute(this.value, csvData)
+            });
+
+        // initial dropdown option
+        var titleOption = dropdown.append('option')
+            .attr('class', 'titleOption')
+            .attr('disabled', 'true')
+            .text('Select Attribute');
+
+        // add name options
+        var attrOptions = dropdown.selectAll('attrOptions')
+            .data(attrArray)
+            .enter()
+            .append('option')
+            .attr('value', function(d) {
+                return d;
+            })
+            .text(function(d) {
+                return d;
+            });
+    };
+
+    function changeAttribute(attribute, csvData) {
+        // set global variable to current attribute requested
+        expressed = attribute;
+
+        // recreate the color scale
+        var colorScale = makeColorScale(csvData);
+
+        //recolor choropleth
+        var states = d3.selectAll('.states')
+            .style('fill', function(d) {
+                return choropleth(d.properties, colorScale);
+        });
+
+        // lab manual had ".bar" for this function and ".bars" for the other
+        var bars = d3.selectAll('.bars')
+            // re-sort bars
+            .sort(function(a, b) {
+                return a[expressed]-b[expressed];
+            });
+
+        updateChart(bars, csvData.length, colorScale);
+    };
+
+    function updateChart(bars, n, colorScale) {
+        var xScale = d3.scaleLinear()
+            .range([leftPadding + rightPadding + 1, chartInnerWidth - 10])
+            .domain([0, maxVal]);
+
+        bars.attr('x', function (d) {
+                return xScale(parseFloat(d[expressed]) / chartInnerWidth);
+            })
+            .attr('width', function(d) {
+                return xScale(parseFloat(d[expressed]));
+            })
+            .attr('height', chartInnerHeight / n - 1)
+            .attr('y', function (d, i) {
+                return i * ((chartInnerHeight - 2) / n);
+            })
+            .style('fill', function (d) {
+                return choropleth(d, colorScale);
+            });
+
+        var chartTitle = d3.select('.chartTitle')
+            .text('Number of Variable ' + expressed + ' in each region');
+    };
 
     function joinData(unitedstates, csvData) {
         // join csv and topojson
@@ -267,6 +346,4 @@
             return '#CCC';
         };
     };
-
-    window.onload = setMap();
 })();
