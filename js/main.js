@@ -26,6 +26,13 @@
         .range([leftPadding + rightPadding + 1, chartInnerWidth - 10])
         .domain([0, maxVal]);
 
+    // new svg for bar chart
+    var chart = d3.select('body')
+        .append('svg')
+        .attr('width', chartWidth)
+        .attr('height', chartHeight)
+        .attr('class', 'chart');
+
 
     window.onload = setMap();
 
@@ -77,26 +84,8 @@
         };
     };
 
+
     function setChart(csvData, colorScale) {
-        // new svg for bar chart
-        var chart = d3.select('body')
-            .append('svg')
-            .attr('width', chartWidth)
-            .attr('height', chartHeight)
-            .attr('class', 'chart');
-
-        // add those bars
-        var bars = chart.selectAll('.bars')
-            .data(csvData)
-            .enter()
-            .append('rect')
-            .sort(function(a, b) {
-                return a[expressed]-b[expressed];
-            })
-            .attr('class', function(d) {
-                return "bars " + d.STATE_NAME;
-            });
-
         // background of chart
         var chartBackground = chart.append('rect')
             .attr('class', 'chartBackground')
@@ -117,6 +106,10 @@
             .attr('y', 30)
             .attr('class', 'chartTitle')
             .text('Number of Variable ' + expressed + ' in each region');
+
+        var xScale = d3.scaleLinear()
+            .range([leftPadding + rightPadding + 1, chartInnerWidth - 10])
+            .domain([0, maxVal]);
 
         // horizontal axis
         var xAxis = d3.axisBottom()
@@ -157,27 +150,45 @@
         //         return d[expressed];
         //     });
 
+        // add those bars
+        var bars = chart.selectAll('.bars')
+            .data(csvData)
+            .enter()
+            .append('rect')
+            .sort(function(a, b) {
+                return a[expressed]-b[expressed];
+            })
+            .attr('class', function(d) {
+                return "bars " + d.STATE_NAME;
+            })
+            .on('mouseover', highlight)
+            .on('mouseout', dehighlight)
+            .on('mousemove', moveLabel);
+
+        var desc = bars.append('desc')
+            .text('{"stroke": "none", "stroke-width": "0px"}');
+
         // function for repeated parts of both bars sections
         updateChart(bars, csvData.length, colorScale);
     };
 
 
-    function setGraticule(map, path) {
-        // var graticule = d3.geoGraticule()
-        //     .step([5, 5]);
-
-        // var gratBackground = map.append('path')
-        //     .datum(graticule.outline())
-        //     .attr('class', 'gratBackground')
-        //     .attr('d', path);
-
-        // var gratLines = map.selectAll('.gratLines')
-        //     .data(graticule.lines())
-        //     .enter()
-        //     .append('path')
-        //     .attr('class', 'gratLines')
-        //     .attr('d', path);
-    };
+    // function setGraticule(map, path) {
+    //     var graticule = d3.geoGraticule()
+    //         .step([5, 5]);
+    //
+    //     var gratBackground = map.append('path')
+    //         .datum(graticule.outline())
+    //         .attr('class', 'gratBackground')
+    //         .attr('d', path);
+    //
+    //     var gratLines = map.selectAll('.gratLines')
+    //         .data(graticule.lines())
+    //         .enter()
+    //         .append('path')
+    //         .attr('class', 'gratLines')
+    //         .attr('d', path);
+    // };
 
     function createDropdown(csvData) {
         // select element
@@ -216,6 +227,7 @@
             });
     };
 
+
     function changeAttribute(attribute, csvData) {
         // set global variable to current attribute requested
         expressed = attribute;
@@ -234,10 +246,16 @@
             // re-sort bars
             .sort(function(a, b) {
                 return a[expressed]-b[expressed];
-            });
+            })
+            .transition()
+            .delay(function(d, i) {
+                return i * 20;
+            })
+            .duration(500);
 
         updateChart(bars, csvData.length, colorScale);
     };
+
 
     function updateChart(bars, n, colorScale) {
         var xScale = d3.scaleLinear()
@@ -258,15 +276,34 @@
                 return choropleth(d, colorScale);
             });
 
+        // horizontal axis
+        var xAxis = d3.axisBottom()
+            .scale(xScale)
+            .tickFormat(function (d) {
+                if ((d / 1000) >= 1) {
+                    d = d / 1000 + "K";
+                }
+                return d;
+            });
+
+        //replace horizontal axis
+        // remove old axis first
+        chart.selectAll('g.axis').remove();
+        var axis = chart.append('g')
+            .attr('class', 'axis')
+            .attr('transform', "translate(0, " + (chartHeight - topBottomPadding) + ")")
+            .call(xAxis);
+
         var chartTitle = d3.select('.chartTitle')
             .text('Number of Variable ' + expressed + ' in each region');
     };
+
 
     function joinData(unitedstates, csvData) {
         // join csv and topojson
         for (var i in csvData) {
             var csv_row = csvData[i];
-            var csv_key = csv_row.State;
+            var csv_key = csv_row.STATE_NAME;
 
             // loop through topojson
             for (var j in unitedstates) {
@@ -296,7 +333,19 @@
             .attr('d', path)
             .style('fill', function(d) {
                 return choropleth(d.properties, colorScale);
-            });
+            })
+            .on('mouseover', function(d) {
+                highlight(d.properties);
+            })
+            .on('mouseout', function(d) {
+                dehighlight(d.properties);
+            })
+            .on('mousemove', moveLabel)
+            .transition()
+            .duration(1000);
+
+        var desc = map.selectAll('.states').append('desc')
+            .text('{"stroke": "#000", "stroke-width": "0.5px"}');
     };
 
 
@@ -345,5 +394,80 @@
         } else {
             return '#CCC';
         };
+    };
+
+
+    function setLabel(props){
+        //label content
+        var labelAttribute = "<h1>" + props[expressed] +
+            "</h1><b>" + expressed + "</b>";
+
+        //create info label div
+        var infolabel = d3.select("body")
+            .append("div")
+            .attr("class", "infolabel")
+            .attr("id", props.STATE_NAME + "_label")
+            .html(labelAttribute);
+
+        var stateName = infolabel.append("div")
+            .attr("class", "stateName")
+            .html(props.STATE_NAME);
+    };
+
+
+    function highlight(props){
+        //change stroke
+        var selected = d3.selectAll("." + props.STATE_NAME)
+            .style("stroke", "blue")
+            .style("stroke-width", "2");
+        setLabel(props)
+    };
+
+
+    function dehighlight(props){
+        var selected = d3.selectAll("." + props.STATE_NAME)
+            .style("stroke", function(){
+                return getStyle(this, "stroke")
+            })
+            .style("stroke-width", function(){
+                return getStyle(this, "stroke-width")
+            });
+
+        function getStyle(element, styleName){
+            var styleText = d3.select(element)
+                .select("desc")
+                .text();
+
+            var styleObject = JSON.parse(styleText);
+
+            return styleObject[styleName];
+        };
+
+        d3.select('.infolabel')
+            .remove()
+    };
+
+    function moveLabel() {
+        // get width
+        var labelWidth = d3.select('.infolabel')
+            .node()
+            .getBoundingClientRect()
+            .width;
+
+        //use coordinates of mousemove event to set label coordinates
+        var x1 = d3.event.clientX + 10,
+            y1 = d3.event.clientY - 75,
+            x2 = d3.event.clientX - labelWidth - 10,
+            y2 = d3.event.clientY + 25;
+
+        // test for overflow - horizontal
+        var x = d3.event.clientX > window.innerWidth - labelWidth - 20 ? x2 : x1;
+        // test for overflow - vertical
+        var y = d3.event.clientY < 75 ? y2 : y1;
+
+
+        d3.select(".infolabel")
+            .style("left", x + "px")
+            .style("top", y + "px");
     };
 })();
