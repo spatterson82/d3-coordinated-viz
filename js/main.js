@@ -22,10 +22,6 @@
         chartInnerHeight = chartHeight - topBottomPadding,
         translate = "translate(" + 4 + "," + 0  + ")";
 
-    var xScale = d3.scaleLinear()
-        .range([leftPadding + rightPadding + 1, chartInnerWidth - 10])
-        .domain([0, maxVal]);
-
     // new svg for bar chart
     var chart = d3.select('body')
         .append('svg')
@@ -33,23 +29,23 @@
         .attr('height', chartHeight)
         .attr('class', 'chart');
 
+    // dimension
+    var width = window.innerWidth * .5,
+        height = 500;
+
+    // d3 map container
+    var map = d3.select("body")
+        .append('svg')
+        .attr('class', 'map')
+        .attr('width', width)
+        .attr('height', height);
+
 
     window.onload = setMap();
 
 
     // choropleth map
     function setMap() {
-        // dimension
-        var width = window.innerWidth * .5,
-            height = 500;
-
-        // d3 map container
-        var map = d3.select("body")
-            .append('svg')
-            .attr('class', 'map')
-            .attr('width', width)
-            .attr('height', height);
-
         // map projection
         var projection = d3.geoAlbersUsa();
 
@@ -81,8 +77,32 @@
 
             // add dropdown
             createDropdown(csvData);
+
+            // add max and min text
+            addLegend(csvData);
         };
     };
+
+    function addLegend() {
+        var legend = map.append('text')
+            .attr('x', 980)
+            .attr('y', 230)
+            .attr('dx', 12)
+            .attr('dy', '.35em')
+            .attr('class', 'legend')
+            .style('fill', 'rgb(80,80,80)');
+        legend.append('tspan')
+            .attr('dy', 0)
+            .text('Max Use: ');
+        legend.append('tspan')
+            .attr('dy', 40)
+            .attr('dx', -100)
+            .text(maxVal + ' MGD');
+    };
+    function updateLegend() {
+        map.select('.legend').remove();
+        addLegend();
+    }
 
 
     function setChart(csvData, colorScale) {
@@ -166,6 +186,7 @@
                 };
                 maxVal = Math.max.apply(null, float_list);
 
+                updateLegend();
                 changeAttribute(this.value, csvData)
             });
 
