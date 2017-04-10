@@ -4,10 +4,10 @@
     //Global Variables//
     ////////////////////
     // fields for joining
-    var attrArray = ["Public_Supply", "Domestic_Fresh", "Irrigation_Fresh",
-        "Livestock_Fresh", "Aquaculture_Fresh", "Industrial_Fresh", "Industrial_Saline",
-        "Mining_Fresh", "Mining_Saline", "Thermoelectric_Power_Fresh",
-        "Thermoelectric_Power_Saline", "Total_Fresh", "Total_Saline", "Total"];
+    var attrArray = ["Public Supply", "Domestic Fresh", "Irrigation Fresh",
+        "Livestock Fresh", "Aquaculture Fresh", "Industrial Fresh", "Industrial Saline",
+        "Mining Fresh", "Mining Saline", "Thermoelectric Power Fresh",
+        "Thermoelectric Power Saline", "Total Fresh", "Total Saline", "Total"];
     var expressed = attrArray[0];
     var float_list = [];
     var maxVal = null;
@@ -105,7 +105,7 @@
             .attr('x', 200)
             .attr('y', 30)
             .attr('class', 'chartTitle')
-            .text('Number of Variable ' + expressed + ' in each region');
+            .text('(' + expressed + ') Water Amount Used by State in 2005');
 
         var xScale = d3.scaleLinear()
             .range([leftPadding + rightPadding + 1, chartInnerWidth - 10])
@@ -127,28 +127,6 @@
             .attr('transform', "translate(0, " + (chartHeight - topBottomPadding) + ")")
             .call(xAxis);
 
-        // // add text to bars
-        // var numbers = chart.selectAll('.numbers')
-        //     .data(csvData)
-        //     .enter()
-        //     .append('text')
-        //     .sort(function(a, b) {
-        //         return a[expressed]-b[expressed];
-        //     })
-        //     .attr('class', function(d) {
-        //         return "numbers " + d.STATE_NAME;
-        //     })
-        //     .attr('text-anchor', 'right')
-        //     .attr('x', function(d) {
-        //         return xScale(parseFloat(d[expressed])) / chartWidth;
-        //     })
-        //     .attr('y', function(d, i) {
-        //         var fraction = chartHeight / csvData.length;
-        //         return i * fraction + (fraction - 1);
-        //     })
-        //     .text(function(d) {
-        //         return d[expressed];
-        //     });
 
         // add those bars
         var bars = chart.selectAll('.bars')
@@ -172,23 +150,6 @@
         updateChart(bars, csvData.length, colorScale);
     };
 
-
-    // function setGraticule(map, path) {
-    //     var graticule = d3.geoGraticule()
-    //         .step([5, 5]);
-    //
-    //     var gratBackground = map.append('path')
-    //         .datum(graticule.outline())
-    //         .attr('class', 'gratBackground')
-    //         .attr('d', path);
-    //
-    //     var gratLines = map.selectAll('.gratLines')
-    //         .data(graticule.lines())
-    //         .enter()
-    //         .append('path')
-    //         .attr('class', 'gratLines')
-    //         .attr('d', path);
-    // };
 
     function createDropdown(csvData) {
         // select element
@@ -295,7 +256,7 @@
             .call(xAxis);
 
         var chartTitle = d3.select('.chartTitle')
-            .text('Number of Variable ' + expressed + ' in each region');
+            .text('(' + expressed + ') Water Amount Used by State in 2005');
     };
 
 
@@ -342,7 +303,7 @@
             })
             .on('mousemove', moveLabel)
             .transition()
-            .duration(1000);
+            .duration(200);
 
         var desc = map.selectAll('.states').append('desc')
             .text('{"stroke": "#000", "stroke-width": "0.5px"}');
@@ -351,11 +312,12 @@
 
     function makeColorScale(data) {
         var colorClasses = [
-            "#D4B9DA",
-            "#C994C7",
-            "#DF65B0",
-            "#DD1C77",
-            "#980043"
+            "#cfdacd",
+            "#c4c98a",
+            "#d1df52",
+            "#a0dd3e",
+            "#18dd33",
+            "#1a6e32"
         ];
 
         // color scale generator
@@ -399,15 +361,22 @@
 
     function setLabel(props){
         //label content
-        var labelAttribute = "<h1>" + props[expressed] +
+        var labelAttribute1 = "<h1>" + props[expressed] +
             "</h1><b>" + expressed + "</b>";
-
+        var labelAttribute2 = "<h1>No Data</h1><b>" + expressed + "</b>";
+        var labelAtt = '';
         //create info label div
         var infolabel = d3.select("body")
             .append("div")
             .attr("class", "infolabel")
             .attr("id", props.STATE_NAME + "_label")
-            .html(labelAttribute);
+            .html(function() {
+                if (props[expressed] == 0) {
+                    return labelAttribute2;
+                } else {
+                    return labelAttribute1;
+                }
+            });
 
         var stateName = infolabel.append("div")
             .attr("class", "stateName")
@@ -418,8 +387,8 @@
     function highlight(props){
         //change stroke
         var selected = d3.selectAll("." + props.STATE_NAME)
-            .style("stroke", "blue")
-            .style("stroke-width", "2");
+            .style("stroke", "green")
+            .style("stroke-width", "4");
         setLabel(props)
     };
 
