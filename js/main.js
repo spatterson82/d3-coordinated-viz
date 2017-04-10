@@ -86,7 +86,7 @@
     function addLegend() {
         var legend = map.append('text')
             .attr('y', 230)
-            .attr('dx', 800)
+            .attr('dx', 820)
             .attr('dy', '.35em')
             .attr('class', 'legend')
             .style('fill', 'rgb(80,80,80)');
